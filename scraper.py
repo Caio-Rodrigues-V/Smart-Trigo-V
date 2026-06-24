@@ -469,7 +469,14 @@ def montar_resumo(dados: List[Dict], regioes: List[str]) -> Dict:
     }
 
 
-async def executar_varredura(regioes: List[str], max_lojas: int, output_dir: Path, headless: bool = True, progress_cb: ProgressCallback = None) -> Dict:
+async def executar_varredura(
+    regioes: List[str],
+    max_lojas: int,
+    output_dir: Path,
+    headless: bool = True,
+    progress_cb: ProgressCallback = None,
+    permitir_repetidas: bool = False,
+) -> Dict:
     output_dir.mkdir(parents=True, exist_ok=True)
     outputs_root = output_dir.parent
     historico_lojas, historico_chaves = carregar_historico(outputs_root)
@@ -483,7 +490,8 @@ async def executar_varredura(regioes: List[str], max_lojas: int, output_dir: Pat
     duplicadas_por_dados = 0
     
     if progress_cb:
-        progress_cb({"type": "message", "message": f"Preparando busca. Historico atual: {len(historico_lojas)} lojas."})
+        modo = "permitindo repetidas" if permitir_repetidas else "evitando repetidas"
+        progress_cb({"type": "message", "message": f"Preparando busca ({modo}). Historico atual: {len(historico_lojas)} lojas."})
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=headless)
@@ -517,15 +525,15 @@ async def executar_varredura(regioes: List[str], max_lojas: int, output_dir: Pat
                 continue
             vistos_url.add(url)
 
-            if chave_url in historico_chaves:
+            if not permitir_repetidas and chave_url in historico_chaves:
                 duplicadas_por_url += 1
                 continue
 
             fila.append((url, regiao))
 
         if progress_cb:
-            mensagem = f"Extraindo detalhes de {len(fila)} lojas novas..."
-            if duplicadas_por_url:
+            mensagem = f"Extraindo detalhes de {len(fila)} lojas..."
+            if not permitir_repetidas and duplicadas_por_url:
                 mensagem += f" {duplicadas_por_url} links repetidos foram ignorados."
             progress_cb({"type": "total", "total": len(fila), "message": mensagem})
 
@@ -541,8 +549,15 @@ async def executar_varredura(regioes: List[str], max_lojas: int, output_dir: Pat
         await browser.close()
 
     unicos = tratar_resultados(resultados)
-    novos, duplicadas_por_dados = filtrar_lojas_novas(unicos, historico_chaves)
-    historico_atualizado = historico_lojas + novos
+    if permitir_repetidas:
+        novos = unicos
+        _, duplicadas_por_dados = filtrar_lojas_novas(unicos, historico_chaves)
+        lojas_para_historico, _ = filtrar_lojas_novas(unicos, historico_chaves)
+    else:
+        novos, duplicadas_por_dados = filtrar_lojas_novas(unicos, historico_chaves)
+        lojas_para_historico = novos
+
+    historico_atualizado = historico_lojas + lojas_para_historico
 
     salvar_csv(novos, csv_path)
     salvar_excel(novos, excel_path)
@@ -557,5 +572,6 @@ async def executar_varredura(regioes: List[str], max_lojas: int, output_dir: Pat
         "excel_path": str(excel_path),
         "log_path": str(log_path) if log_path.exists() else "",
         "duplicadas_ignoradas": duplicadas_total,
+        "repetidas_permitidas": permitir_repetidas,
         "historico_total": len(historico_atualizado),
     }

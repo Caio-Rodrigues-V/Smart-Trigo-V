@@ -27,7 +27,7 @@ def supabase_ativo() -> bool:
 def conectar():
     import psycopg
 
-    return psycopg.connect(database_url())
+    return psycopg.connect(database_url(), prepare_threshold=None)
 
 
 def carregar_lojas() -> List[Dict]:

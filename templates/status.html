@@ -86,7 +86,7 @@
             <div><strong>${s.com_telefone}</strong><span>Com telefone</span></div>
             <div><strong>${s.com_whatsapp}</strong><span>Com WhatsApp</span></div>
             <div><strong>${s.com_site}</strong><span>Com site</span></div>
-            <div><strong>${job.duplicadas_ignoradas || 0}</strong><span>Repetidas ignoradas</span></div>
+            <div><strong>${job.duplicadas_ignoradas || 0}</strong><span>${job.repetidas_permitidas ? 'Repetidas no resultado' : 'Repetidas ignoradas'}</span></div>
             <div><strong>${job.historico_total || s.total}</strong><span>No historico</span></div>
           </div>
           <ul>${porRegiao}</ul>

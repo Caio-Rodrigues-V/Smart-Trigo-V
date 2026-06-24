@@ -69,7 +69,7 @@ def progress_factory(job_id: str):
     return progress
 
 
-def executar_job(job_id: str, regioes: List[str], max_lojas: int, abrir_navegador: bool) -> None:
+def executar_job(job_id: str, regioes: List[str], max_lojas: int, abrir_navegador: bool, permitir_repetidas: bool) -> None:
     try:
         atualizar_job(job_id, {"status": "running", "message": "Iniciando varredura..."})
         job_dir = OUTPUTS_DIR / job_id
@@ -80,6 +80,7 @@ def executar_job(job_id: str, regioes: List[str], max_lojas: int, abrir_navegado
                 output_dir=job_dir,
                 headless=not abrir_navegador,
                 progress_cb=progress_factory(job_id),
+                permitir_repetidas=permitir_repetidas,
             )
         )
 
@@ -87,7 +88,9 @@ def executar_job(job_id: str, regioes: List[str], max_lojas: int, abrir_navegado
         duplicadas = resultado.get("duplicadas_ignoradas", 0)
         historico_total = resultado.get("historico_total", resumo["total"])
         mensagem_final = "Varredura finalizada. Baixe o Excel ou CSV abaixo."
-        if duplicadas:
+        if resultado.get("repetidas_permitidas"):
+            mensagem_final = f"Varredura finalizada incluindo lojas repetidas. {duplicadas} lojas do resultado ja estavam no historico."
+        elif duplicadas:
             mensagem_final = f"Varredura finalizada. {duplicadas} lojas repetidas foram ignoradas. Baixe os novos leads abaixo."
         atualizar_job(
             job_id,
@@ -101,6 +104,7 @@ def executar_job(job_id: str, regioes: List[str], max_lojas: int, abrir_navegado
                 "csv_path": resultado["csv_path"],
                 "log_path": resultado.get("log_path", ""),
                 "duplicadas_ignoradas": duplicadas,
+                "repetidas_permitidas": resultado.get("repetidas_permitidas", False),
                 "historico_total": historico_total,
             },
         )
@@ -129,6 +133,7 @@ def executar(
     regioes: List[str] = Form(...),
     max_lojas: int = Form(20),
     abrir_navegador: bool = Form(False),
+    permitir_repetidas: bool = Form(False),
 ):
     regioes_validas = [r for r in regioes if r in REGIOES_DISPONIVEIS]
     if not regioes_validas:
@@ -147,9 +152,10 @@ def executar(
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "regioes": regioes_validas,
         "max_lojas": max_lojas,
+        "permitir_repetidas": permitir_repetidas,
     }
 
-    background_tasks.add_task(executar_job, job_id, regioes_validas, max_lojas, abrir_navegador)
+    background_tasks.add_task(executar_job, job_id, regioes_validas, max_lojas, abrir_navegador, permitir_repetidas)
     return RedirectResponse(url=f"/status/{job_id}", status_code=303)
 
 
