@@ -11,6 +11,9 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from playwright.async_api import async_playwright
 
 from municipios_sp import MUNICIPIOS_SP
+from supabase_history import carregar_lojas as carregar_historico_supabase
+from supabase_history import salvar_lojas as salvar_historico_supabase
+from supabase_history import supabase_ativo
 
 REGIOES_DISPONIVEIS = MUNICIPIOS_SP
 
@@ -168,11 +171,14 @@ def carregar_csv_lojas(path: Path) -> List[Dict]:
 
 
 def carregar_historico(outputs_root: Path) -> Tuple[List[Dict], Set[str]]:
-    historico_path = outputs_root / HISTORICO_ARQUIVO
-    lojas: List[Dict] = carregar_csv_lojas(historico_path)
+    if supabase_ativo():
+        lojas: List[Dict] = carregar_historico_supabase()
+    else:
+        historico_path = outputs_root / HISTORICO_ARQUIVO
+        lojas = carregar_csv_lojas(historico_path)
 
-    for csv_path in outputs_root.glob("*/*.csv"):
-        lojas.extend(carregar_csv_lojas(csv_path))
+        for csv_path in outputs_root.glob("*/*.csv"):
+            lojas.extend(carregar_csv_lojas(csv_path))
 
     chaves: Set[str] = set()
     unicas: List[Dict] = []
@@ -190,6 +196,10 @@ def carregar_historico(outputs_root: Path) -> Tuple[List[Dict], Set[str]]:
 
 
 def salvar_historico(outputs_root: Path, lojas: List[Dict]) -> None:
+    if supabase_ativo():
+        salvar_historico_supabase(lojas)
+        return
+
     historico_path = outputs_root / HISTORICO_ARQUIVO
     salvar_csv(lojas, historico_path)
 

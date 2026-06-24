@@ -4,3 +4,4 @@ jinja2==3.1.5
 python-multipart==0.0.20
 openpyxl==3.1.5
 playwright==1.49.1
+psycopg[binary]>=3.2,<4
