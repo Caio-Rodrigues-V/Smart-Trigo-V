@@ -1,0 +1,6 @@
+.venv
+.playwright-browsers
+__pycache__
+outputs
+Smart-Trigo-V
+.agents

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-br" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job não encontrado</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Varredouro de Leads">
+      <span class="brand-mark">V</span>
+      <span>Varredouro</span>
+    </a>
+  </header>
+
+  <main class="status-main">
+    <section class="section-inner status-layout single-column">
+      <div class="status-copy">
+        <span class="eyebrow">Não encontrado</span>
+        <h1>Esse job não está mais disponível.</h1>
+        <p>A varredura pode ter expirado ou o servidor pode ter sido reiniciado.</p>
+        <a class="primary-action inline-action" href="/">Voltar para o início</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const savedTheme = localStorage.getItem('varredouro-smart-theme');
+    document.documentElement.dataset.theme = savedTheme || 'light';
+  </script>
+</body>
+</html>

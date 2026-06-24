@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-br" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Status da varredura</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Varredouro de Leads">
+      <span class="brand-mark">V</span>
+      <span>Varredouro</span>
+    </a>
+
+    <a class="ghost-action small-action" href="/">Nova varredura</a>
+
+    <button class="theme-toggle" type="button" id="themeToggle" aria-label="Alternar tema" aria-pressed="false">
+      <span class="toggle-track" aria-hidden="true">
+        <span class="toggle-thumb"></span>
+      </span>
+    </button>
+  </header>
+
+  <main class="status-main">
+    <section class="section-inner status-layout">
+      <div class="status-copy">
+        <span class="eyebrow">Job #{{ job.id }}</span>
+        <h1>Status da varredura</h1>
+        <p id="message">{{ job.message }}</p>
+      </div>
+
+      <section class="run-panel status-panel" aria-label="Progresso da varredura">
+        <div class="progress-header">
+          <span id="status">{{ job.status }}</span>
+          <strong id="progress">{{ job.progress }}%</strong>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-bar" id="bar" style="width: {{ job.progress }}%"></div>
+        </div>
+
+        <div id="summary" class="summary hidden"></div>
+
+        <div id="downloads" class="downloads hidden">
+          <a id="excel" class="primary-action" href="#">Baixar Excel</a>
+          <a id="csv" class="ghost-action" href="#">Baixar CSV</a>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const root = document.documentElement;
+    const themeToggle = document.getElementById('themeToggle');
+    const savedTheme = localStorage.getItem('varredouro-smart-theme');
+    const initialTheme = savedTheme || 'light';
+
+    function applyTheme(theme) {
+      root.dataset.theme = theme;
+      themeToggle.setAttribute('aria-pressed', String(theme === 'dark'));
+      localStorage.setItem('varredouro-smart-theme', theme);
+    }
+
+    applyTheme(initialTheme);
+    themeToggle.addEventListener('click', () => {
+      applyTheme(root.dataset.theme === 'dark' ? 'light' : 'dark');
+    });
+
+    const jobId = "{{ job.id }}";
+    async function poll() {
+      const res = await fetch(`/api/jobs/${jobId}`);
+      const job = await res.json();
+      document.getElementById('message').textContent = job.message || '';
+      document.getElementById('status').textContent = job.status || '';
+      document.getElementById('progress').textContent = `${job.progress || 0}%`;
+      document.getElementById('bar').style.width = `${job.progress || 0}%`;
+
+      if (job.summary) {
+        const s = job.summary;
+        const porRegiao = Object.entries(s.por_regiao || {}).map(([k, v]) => `<li><span>${k}</span><strong>${v}</strong></li>`).join('');
+        document.getElementById('summary').classList.remove('hidden');
+        document.getElementById('summary').innerHTML = `
+          <div class="summary-grid">
+            <div><strong>${s.total}</strong><span>Novos leads</span></div>
+            <div><strong>${s.com_telefone}</strong><span>Com telefone</span></div>
+            <div><strong>${s.com_whatsapp}</strong><span>Com WhatsApp</span></div>
+            <div><strong>${s.com_site}</strong><span>Com site</span></div>
+            <div><strong>${job.duplicadas_ignoradas || 0}</strong><span>Repetidas ignoradas</span></div>
+            <div><strong>${job.historico_total || s.total}</strong><span>No historico</span></div>
+          </div>
+          <ul>${porRegiao}</ul>
+        `;
+      }
+
+      if (job.status === 'done') {
+        document.getElementById('downloads').classList.remove('hidden');
+        document.getElementById('excel').href = `/download/${jobId}/excel`;
+        document.getElementById('csv').href = `/download/${jobId}/csv`;
+        return;
+      }
+
+      if (job.status !== 'error') setTimeout(poll, 2000);
+    }
+    poll();
+  </script>
+</body>
+</html>
